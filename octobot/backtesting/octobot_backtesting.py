@@ -216,6 +216,7 @@ class OctoBotBacktesting:
                 .set_bot_id(self.bot_id) \
                 .is_simulated() \
                 .is_rest_only() \
+                .is_future() \
                 .is_backtesting(self.backtesting)
             try:
                 await exchange_builder.build()
