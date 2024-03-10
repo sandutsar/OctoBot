@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -88,7 +88,7 @@ class OctoBotChannelGlobalConsumer:
             if action == trading_channel_consumer.OctoBotChannelTradingActions.EXCHANGE.value:
                 if trading_channel_consumer.OctoBotChannelTradingDataKeys.EXCHANGE_ID.value in data:
                     exchange_id = data[trading_channel_consumer.OctoBotChannelTradingDataKeys.EXCHANGE_ID.value]
-                    self.octobot.exchange_producer.exchange_manager_ids.append(exchange_id)
+                    self.octobot.exchange_producer.register_created_exchange_id(exchange_id)
                     await logger.init_exchange_chan_logger(exchange_id)
                     exchange_configuration = trading_api.get_exchange_configuration_from_exchange_id(exchange_id)
                     await self.octobot.evaluator_producer.create_evaluators(exchange_configuration)

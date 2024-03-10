@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -37,9 +37,11 @@ class EvaluatorProducer(octobot_channel.OctoBotChannelProducer):
         self.matrix_id = None
 
     async def start(self):
-        self.matrix_id = await evaluator_api.initialize_evaluators(self.octobot.config, self.tentacles_setup_config)
+        await evaluator_api.initialize_evaluators(self.octobot.config, self.tentacles_setup_config)
+        self.matrix_id = evaluator_api.create_matrix()
         await evaluator_api.create_evaluator_channels(
-            self.matrix_id, is_backtesting=backtesting_api.is_backtesting_enabled(self.octobot.config))
+            self.matrix_id, is_backtesting=backtesting_api.is_backtesting_enabled(self.octobot.config)
+        )
         await logger.init_evaluator_chan_logger(self.matrix_id)
 
     async def create_evaluators(self, exchange_configuration):
@@ -55,4 +57,7 @@ class EvaluatorProducer(octobot_channel.OctoBotChannelProducer):
                                 exchange_configuration
                         })
 
-
+    async def stop(self):
+        self.logger.debug("Stopping ...")
+        await evaluator_api.stop_all_evaluator_channels(self.matrix_id)
+        self.logger.debug("Stopped")

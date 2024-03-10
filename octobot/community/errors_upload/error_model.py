@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -30,8 +30,8 @@ class Error:
         self.metrics_id: str = metrics_id
         self.type: str = self.error.__class__.__name__ if self.error else ""
         self.stacktrace: list = traceback.format_exception(
-            etype=type(self.error), value=self.error, tb=self.error.__traceback__
-        )[1:] if self.error else []
+            type(self.error), value=self.error, tb=self.error.__traceback__
+        )[1:] if self.error and isinstance(self.error, Exception) else []
 
     def to_dict(self) -> dict:
         """

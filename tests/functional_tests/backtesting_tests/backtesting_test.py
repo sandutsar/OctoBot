@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -16,6 +16,8 @@
 import asyncio
 import pytest
 
+import tentacles
+
 import octobot_commons.asyncio_tools as asyncio_tools
 from octobot_trading.api.exchange import get_exchange_manager_from_exchange_id
 from octobot_trading.api.orders import get_open_orders
@@ -26,10 +28,9 @@ from octobot.backtesting.abstract_backtesting_test import DATA_FILES
 from octobot_trading.api.trades import get_trade_history
 from tests.test_utils.bot_management import run_independent_backtesting
 from tests.test_utils.logging import activate_tentacles_loading_logger
+import octobot_tentacles_manager.api as tentacles_manager_api
 
 activate_tentacles_loading_logger()
-# force tentacles import since it's required for backtesting
-import tentacles
 
 BACKTESTING_SYMBOLS = ["ICX/BTC", "VEN/BTC", "XRB/BTC", "2020ADA/BTC", "2020ADA/USDT", "BTC/USDT"]
 
@@ -40,6 +41,7 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 def event_loop():
     loop = asyncio.new_event_loop()
+    tentacles_manager_api.reload_tentacle_info()
     # use ErrorContainer to catch otherwise hidden exceptions occurring in async scheduled tasks
     error_container = asyncio_tools.ErrorContainer()
     loop.set_exception_handler(error_container.exception_handler)
@@ -51,8 +53,8 @@ def event_loop():
 
 async def test_single_data_file_backtesting():
     await _check_double_backtesting(
-        run_independent_backtesting([DATA_FILES[BACKTESTING_SYMBOLS[0]]]),
-        run_independent_backtesting([DATA_FILES[BACKTESTING_SYMBOLS[0]]])
+        run_independent_backtesting([DATA_FILES[BACKTESTING_SYMBOLS[0]]], enable_storage=True),
+        run_independent_backtesting([DATA_FILES[BACKTESTING_SYMBOLS[0]]], enable_storage=True)
     )
 
 

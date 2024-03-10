@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -65,7 +65,8 @@ async def run_independent_backtestings_with_memory_check(config, tentacles_setup
 
 
 async def _run_backtesting(config, tentacles_setup_config):
-    backtesting = create_independent_backtesting(config, tentacles_setup_config, [DATA_FILES["ETH/USDT"]], "")
+    backtesting = create_independent_backtesting(config, tentacles_setup_config, [DATA_FILES["ETH/USDT"]], "",
+                                                 enable_storage=False)
     await initialize_and_run_independent_backtesting(backtesting, log_errors=False)
     await join_independent_backtesting(backtesting)
     return backtesting

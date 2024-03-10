@@ -6,6 +6,501 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *It is strongly advised to perform an update of your tentacles after updating OctoBot. (start.py tentacles --install --all)*
 
+## [1.0.8] - 2024-02-14
+### Added
+- [TradingView] Support standalone stop loss and order tags
+### Updated
+- [Tentacles] Improved docs
+- [WebInterface] Fix exchange credentials check when using futures accounts
+- [Exchanges] Increase base maximum candles count and make it customizable via env variable
+- [Links] octobot.cloud links
+### Fixed
+- [Exchanges] Remove log spam on invalid credentials
+- [Cloud strategies] Fix cloud strategies download
+
+## [1.0.7] - 2024-01-18
+### Added
+- [CoinEx] Support CoinEx
+### Updated
+- [WebInterface] Show profitability even on backtesting error, special thanks to Phodia for this improvement.
+### Fixed
+- [Exchanges] Websocket reconnection issues
+- [DailyTradingMode] Fix sell amount when shorting in Target Profits mode
+
+## [1.0.6] - 2024-01-09
+### Added
+- [TradingModes] Improved documentation and added links to full guides
+- [InstantMAEvaluator] Add trigger threshold to avoid triggering at each price update
+### Updated
+- [CCXT] update to ccxt 4.2.10
+- [ChatGPT] update to openai 1.7.0
+- [DailyTradingMode] Enable futures position increase: add warning
+### Fixed
+- [DailyTradingMode] handle invalid MAX_CURRENCY_RATIO
+- [TradingView] Fix SIGNAL=CANCEL docs typo
+- [Exchanges] MEXC orders synchronization issues
+- [Exchanges] HTX renamed Huobi into HTX
+### Removed
+- [Exchanges] Bittrex
+
+## [1.0.5] - 2023-12-19
+### Added
+- [GPTEvaluator] Settings to limit used tokens and disable re-evaluation
+### Updated
+- [WebInterface] Improve home display on smaller screens
+### Fixed
+- [Telegram] Fixed multiple telegram commands issues
+- [TradingViewSignalsTradingMode] Fixed buy orders quantity issues
+- [WebInterface] Fixed logs issues
+- [GoogleTrends] Fixed issues with crypto in multiple words
+- [Exchanges] Rare candles fetch error
+
+## [1.0.4] - 2023-12-10
+### Added
+- [Strategies] OctoBot cloud strategies can now be downloaded and used as regular OctoBot profiles 
+- [DailyTradingMode] New "Enable futures position increase" parameter to avoid building on existing positions when trading futures
+- [DCATradingMode] New "Health check" parameter to ensure that no funds remain unsold when using take profits
+- [Exchanges] Bingx spot trading support
+### Updated
+- [CCXT] to version 4.1.82
+- [WebInterface] Improve /profile loading speed
+### Fixed
+- [WebInterface] Fixed outdated currency list in /profile
+- [Ngrok] Fixed configuration issue related to custom domains
+- [Exchanges] Fixed stop loss and take profit issues
+- [Orders & Trading Modes] Multiple rare errors
+
+## [1.0.3] - 2023-10-30
+### Fixed
+- [Exchanges] real-time timeframe issue
+
+## [1.0.2] - 2023-10-29
+### Added
+- [ChatGPT] Backtesting on supported configurations, full list on https://www.octobot.cloud/features/chatgpt-trading 
+- [TradingView] Support cancel orders signal
+- [GridTrading] Optimise initial portfolio command to split funds in an optimized way before starting the trading mode
+- [DCATrading] Option not to cancel previously created orders
+- [DCATrading] Option to always create initial orders at startup when in evaluators mode
+- [Webhook] Support Ngrok custom domains
+### Updated
+- [ChatGPT] Default GPT Trading profile now uses the DCA trading mode 
+- [TradingView] Revamped docs on https://www.octobot.cloud/en/guides/octobot-interfaces/tradingview
+- [DCATrading] Improved error messages
+- [WebInterface] Do not select duplicated profiles by default
+- [DataCollector] Make errors clearer
+- [Links] Migrate to https://www.octobot.cloud/
+### Fixed
+- [Kucoin] Issue regarding minimal order sizes 
+- [Backtesting] Issue on orders that could being filled on the same candle they were created at 
+- [DCATrading] Time based trigger issues
+- [Grid & Staggered orders] Fix order creation when close to spread
+
+## [1.0.1] - 2023-09-28
+### Fixed
+- [Community] OctoBot account connection timeout error 
+
+## [1.0.0] - 2023-09-26
+### Updated
+- [Community] Migrate to the updated octobot.cloud. Full details on https://www.octobot.cloud/en/blog/introducing-the-new-octobot-cloud
+- [Logs] Improve debug logs
+### Fixed
+- [GridTrading] Mirror order rebalance issues 
+- [DCA & Dip Analyser] Sell order split issues 
+
+## [0.4.54] - 2023-08-31
+### Added
+- [Kucoin] API Key permissions checks
+- [OKX] API Key permissions checks
+### Updated
+- [GridTrading] Improve quantity computation using recent trades 
+- [Orders] Display permission error when missing trading permissions in API Key 
+- [TradingView] Quantity documentation 
+- [Logging] Reduce httpx requests logs 
+### Fixed
+- [TradingView] Webhook error 
+### Removed
+- [Python] Removed support for 3.9. 3.10 is now the required Python version
+
+## [0.4.53] - 2023-08-22
+### Added
+- [Smart DCA] Revamp the DCA trading mode to handle evaluators, scaled entries and exits
+- [GridTrading] Support funds reallocation
+- [TradingModes] s% and t% quantity types to trade % of portfolio traded assets
+- [WebInterface] Notification history
+- [WebInterface] Advanced tips
+- [BingX] Trading simulator
+### Updated
+- [WebInterface] Now check trading permission when adding exchange keys
+### Fixed
+- [WebInterface] Orders display issues
+- [WebInterface] Currencies import issues
+- [Binance] Fix futures API
+- [Kucoin] Fix API and websocket
+- [Orders] Chained orders restore
+- [Backtesting] Fix fees computation on very small trades
+- [Storage] Fix corrupted file issues
+
+## [0.4.52] - 2023-07-05
+### Added
+- [Exchanges] Support Binance futures
+- [Exchanges] Crypto.com, Kucoin and MEXC as partner exchanges
+- [Orders] Stop loss full support on futures exchanges
+### Updated
+- [Futures] Improved futures trading related error messages
+- [WebInterface] improved configuration tips
+### Fixed
+- [Futures] Futures trading positions synchronisation issues
+- [Orders] Trading signals related issues
+- [Evaluators] Configuration related time frames issues
+
+## [0.4.51] - 2023-06-09
+### Updated
+- [WebInterface] improve market status
+- [WebInterface] add configuration tips
+### Fixed
+- [Orders] orders synchronisation issues
+- [Display] tentacles configuration display
+- [Display] time frame related display
+
+## [0.4.50] - 2023-05-06
+### Added
+- [DailyTradingMode] Target profit mode
+- [ArbitrageTradingMode] Allow to disable short or long arbitrages 
+- [WebInterface] Backtesting trades table
+- [WebInterface] Open orders display on charts
+- [WebInterface] Time frame selector on charts
+- [Python] Support for 3.9 and 3.10. 3.10 is now the recommended version for OctoBot
+### Updated
+- Removed Cython
+- Improved overall speed thanks to python 3.10 optimizations
+- [Trading Modes] allow order quantity in quote amount
+- [Coinbase] Fix trading simulator issues
+- [Bybit] Made time sync errors much less frequent
+- [WebInterface] Improved spot and futures symbols selector
+- [Websockets] Improved global stability
+### Fixed
+- [Websockets] KeyError
+- [Portfolio] Attribute error
+
+## [0.4.49] - 2023-04-23
+### Updated
+- [CCXT] Update to ccxt 3.0.74
+- [Websockets] Reduce unordered candles warnings
+### Fixed
+- [Coinbase] Trading simulator mode and data collector 
+- [Binance] Order creation issues 
+- [Bybit] Order creation issues 
+- [Telegram] set risk command
+- [TradingView] remove warning on empty line
+
+## [0.4.48] - 2023-04-18
+### Added
+- [WebInterface] Add filters to PNL tab.
+- [TradingViewTradingMode] Handle on position open take profit and stop loss.
+- [DCATradingMode] Add price and order type config.
+- [Hollaex] Possibility to disable websocket in Hollaex exchanges.
+### Updated
+- [Telegram] Improve portfolio display. Special thanks to Tim !
+- [Websockets] Handle partially supported time frames
+- [Trading Modes] Improve impossible error creation messages
+- [WebInterface] Mobile charts display.
+### Fixed
+- [Websockets] logs spam
+- [Databases] Handle incorrect db files format
+- [PNL] invalid trades PNL related issues
+- [WebInterface] Portfolio display on smaller screens.
+
+## [0.4.47] - 2023-04-02
+### Added
+- [Evaluators] ChatGPT evaluator
+- [Exchanges] Restore Coinbase support
+- [Profiles] Risk and complexity
+### Updated
+- [WebInterface] Improve candle charts display. Special thanks to Tim !
+- [Services] Telegram, flask, reddit and other connectors versions
+### Fixed
+- [OKX] create order issues
+- [WebInterface] Fix unexpected client disconnections
+- [PNL] invalid trades PNL related issues
+
+
+## [0.4.46] - 2023-03-24
+### Updated
+- [Telegram] portfolio display
+### Fixed
+- [Orders] saved orders loading issue 
+
+## [0.4.45] - 2023-03-23
+### Added
+- [Trades] value in reference market
+- [PNL] detailed fees
+### Updated
+- [Telegram] increased timeout delay
+- [Telegram] bot portfolio holdings in reference market (thank you, @Max)
+### Fixed
+- [Orders] initially fetched orders issues 
+
+## [0.4.44] - 2023-03-20
+### Fixed
+- [Community] portfolio update issues
+- [OrderStorage] typing issues
+
+## [0.4.43] - 2023-03-19
+### Fixed
+- [Profiles] profiles update error management
+- [Portfolio] origin portfolio valuation issues
+
+## [0.4.42] - 2023-03-18
+### Added
+- Crypto.com spot trading support
+- Bybit spot trading support
+- Order storage: in real trading, stop loss, tags, groups and chained orders are saved between sessions
+### Updated
+- Improve portfolio valuation
+- Improve PNL display
+- Telegram library to async version for better performances
+### Fixed
+- PNL on real trading
+- Price limit computation in order creation
+
+## [0.4.41] - 2023-03-03
+### Added
+- Trades PNL history for supported trading mode
+- Support for OKX futures
+- Support for market orders in Dip Analyser
+### Updated
+- Revamped the trading tab of the web interface
+- Reduced required RAM for long-lasting instances
+- Optimized disc read/write operations when browsing the web interface
+### Fixed
+- Orders synchronization and cancel issues
+- Future trading positions synchronization issues
+- Order creation issues related to order minimum and maximum amounts
+
+## [0.4.40] - 2023-02-17
+### Fixed
+- Historical portfolio reset 
+
+## [0.4.39] - 2023-02-14
+### Fixed
+- Historical portfolio and live metadata issues 
+
+## [0.4.38] - 2023-02-12
+### Added
+- Trades and portfolio history through OctoBot sessions
+- Grid trading default configuration for any pair
+### Fixed
+- Kucoin rate limit issues
+- Portfolio synchronization issues
+- Daily trading: only place stop loss when reducing the position size 
+
+## [0.4.37] - 2023-02-06
+### Added
+- Configurations: add limits
+### Fixed
+- Futures trading: portfolio and cancel order issues
+
+## [0.4.36] - 2023-01-29
+### Added
+- Automations: initialize automations
+- Dip Analayser: add stop loss option
+### Fixed
+- Websockets: reconnect issues
+
+## [0.4.35] - 2023-01-19
+### Added
+- WebInterface: OctoBot cloud register form
+### Updated
+- Websockets: ccxt version
+### Fixed
+- Websockets: kline error
+
+## [0.4.34] - 2023-01-14
+### Added
+- Websockets: support for many more feeds and exchanges
+### Updated
+- Websockets: migrate form cryptofeed to ccxt pro
+- Web interface display speed
+- Coins logo display
+- Mobile display
+
+## [0.4.33] - 2023-01-02
+### Added
+- Profile selector
+- Login session persistence
+### Updated
+- Tutorials
+- Mobile display
+
+## [0.4.32] - 2022-12-29
+### Fixed
+- MQTT reconnection issues
+
+## [0.4.31] - 2022-12-28
+### Fixed
+- profile duplicate download
+- octobot trading typing issue
+
+## [0.4.30] - 2022-12-27
+### Fixed
+- profile download error
+
+## [0.4.29] - 2022-12-26
+### Fixed
+- pip install on Unix
+- crash on missing profile tentacles setup configuration
+
+## [0.4.28] - 2022-12-25
+### Added
+- Keywords tentacles
+- OctoBot-Pro requirements
+- Clock Synchronizer disable env var: ENABLE_CLOCK_SYNCH=False
+### Fixed
+- Multi exchange dashboard issues
+
+## [0.4.27] - 2022-12-13
+### Fixed
+- cancel order issue
+- signal reconnect issues
+
+## [0.4.26] - 2022-12-12
+### Fixed
+- stats graphql request
+
+## [0.4.25] - 2022-12-12
+### Fixed
+- Initial tentacles installation
+
+## [0.4.24] - 2022-12-10
+### Fixed
+- System resources watcher on linux
+- Order quantity computation when from configuration
+- Multiple exchanges issues
+### Updated
+- CCXT version
+
+## [0.4.23] - 2022-11-24
+### Fixed
+- System resources watcher on linux
+
+## [0.4.22] - 2022-11-23
+### Added
+- System resources watcher
+
+## [0.4.21] - 2022-11-23
+### Added
+- Order quantity in Trading modes config
+- Copy trading last signal time
+### Updated
+- Improved profile page load time
+### Fixed
+- Errors on clock synchronizer
+- Exchange deletion spreading on profiles
+
+## [0.4.20] - 2022-11-13
+### Updated
+- Exceptions handling
+### Fixed
+- Crash on stop loss
+
+## [0.4.19] - 2022-11-01
+### Updated
+- Exchange configuration auth details
+
+## [0.4.18] - 2022-11-01
+### Fixed
+- Do not use beta env by default
+
+## [0.4.17] - 2022-11-01
+### Fixed
+- Copy trading order sizing
+
+## [0.4.16] - 2022-10-23
+### Updated
+- Copy trading configuration
+- CCXT configuration via environment variables
+### Fixed
+- Dip Analyser configuration 
+- Bitget & Coinex order handling
+
+## [0.4.15] - 2022-10-23
+### Fixed
+- Copy trading
+- Strategy optimizer stop
+
+## [0.4.14] - 2022-10-21
+### Fixed
+- Crash on historical portfolio computation
+### Added
+- Close position from web interface
+- Signals on user cancel order
+
+## [0.4.13] - 2022-10-15
+### Fixed
+- Spot trading fees computation
+
+## [0.4.12] - 2022-10-15
+### Fixed
+- Copy trading
+
+## [0.4.11] - 2022-10-14
+### Added
+- User inputs system
+- Phemex exchange
+- Run storage
+### Updated
+- Configuration for each tentacle
+- Community bot system instead of devices
+
+## [0.4.10] - 2022-09-13
+### Updated
+- Beta tentacles
+### Fixed
+- Kucoin rate limit issues
+- Futures trading issues
+- Tentacles versioning in profile import
+
+## [0.4.9] - 2022-09-07
+### Updated
+- Beta tentacles
+### Fixed
+- Profile export
+
+## [0.4.8] - 2022-09-04
+### Fixed
+- Device creation
+
+## [0.4.7] - 2022-09-03
+### Updated
+- [Astrolab] Improvements and fixes
+
+## [0.4.6] - 2022-08-23
+### Added
+- [Trading] Futures trading
+- [Exchange] Bitget
+- [Trading] Copy trading
+- [Beta] Beta environment
+### Updated
+- [Community] Migrate to updated community website
+### Fixed
+- [Websockets] Multiple issues related to candles refresh
+
+## [0.4.5] - 2022-06-12
+### Fixed
+- [Trading modes] Stop loss are not created after instantly filled limit orders
+- [Exchanges] Multiple backtesting issues
+- [WebInterface] Portfolio value sorting
+
+## [0.4.4] - 2022-06-01
+### Added
+- [Exchanges] Future trading engine
+- [TradingModes] 
+  - Scripted trading mode bases
+  - Copy trader bases
+
+### Fixed
+- [WebInterface] Security issue
+
 ## [0.4.3] - 2021-11-23
 ### Added
 - [Trading Modes] Add buy volume parameters

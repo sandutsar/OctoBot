@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -30,7 +30,7 @@ class _UploadWrapper:
         )
 
     def upload_if_necessary(self, exception, error_message):
-        if constants.UPLOAD_ERRORS and self._config.get_metrics_enabled():
+        if constants.UPLOAD_ERRORS and (constants.IS_CLOUD_ENV or self._config.get_metrics_enabled()):
             self._uploader.schedule_error_upload(
                 error_model.Error(
                     exception, error_message, time.time(), self._metrics_id

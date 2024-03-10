@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -22,7 +22,8 @@ import threading
 import octobot_commons.logging as logging
 import octobot_commons.configuration as configuration
 import octobot_commons.os_util as os_util
-import octobot_commons.symbol_util as symbol_util
+import octobot_commons.symbols.symbol_util as symbol_util
+import octobot_commons.authentication as authentication
 
 import octobot_commons.constants as common_constants
 
@@ -33,7 +34,7 @@ import octobot_services.constants as service_constants
 
 import octobot_trading.api as trading_api
 
-import octobot.community.community_fields as community_fields
+import octobot.community.models.community_fields as community_fields
 import octobot.constants as constants
 
 
@@ -43,7 +44,7 @@ class CommunityManager:
     def __init__(self, octobot_api):
         self.octobot_api = octobot_api
         self.edited_config: configuration.Configuration = octobot_api.get_edited_config(dict_only=False)
-        self.enabled = self.edited_config.get_metrics_enabled()
+        self.enabled = constants.IS_CLOUD_ENV or self.edited_config.get_metrics_enabled()
         self.reference_market = trading_api.get_reference_market(self.edited_config.config)
         self.logger = logging.get_logger(self.__class__.__name__)
         self.current_config = None
@@ -71,12 +72,14 @@ class CommunityManager:
                 # first ensure this session is not just a configuration test: register after a timer
                 await asyncio.sleep(common_constants.TIMER_BEFORE_METRICS_REGISTRATION_SECONDS)
                 self._init_community_config()
-                await self.register_session()
+                # await self.register_session() # waiting for metrics migration
+                await self._update_authenticated_bot()
                 while self.keep_running:
                     # send a keepalive at periodic intervals
                     await asyncio.sleep(common_constants.TIMER_BETWEEN_METRICS_UPTIME_UPDATE)
                     try:
-                        await self._update_session()
+                        # await self._update_session()  # waiting for metrics migration
+                        await self._update_authenticated_bot()
                     except Exception as e:
                         self.logger.debug(f"Exception when handling community data : {e}")
             except asyncio.CancelledError:
@@ -85,8 +88,10 @@ class CommunityManager:
                 self.logger.debug(f"Exception when handling community registration: {e}")
 
     async def stop_task(self):
+        self.logger.debug("Stopping ...")
         self.keep_running = False
         await self.session.close()
+        self.logger.debug("Stopped ...")
 
     @staticmethod
     def should_register_bot(config: configuration.Configuration):
@@ -99,7 +104,7 @@ class CommunityManager:
     @staticmethod
     def background_get_id_and_register_bot(octobot_api):
         community_manager = CommunityManager(octobot_api)
-        threading.Thread(target=community_manager._blocking_get_id_and_register).start()
+        threading.Thread(target=community_manager._blocking_get_id_and_register, name="CommunityManagerGetId").start()
 
     def _blocking_get_id_and_register(self):
         try:
@@ -130,6 +135,15 @@ class CommunityManager:
             community_fields.CommunityFields.TRADED_VOLUMES.value] = self._get_traded_volumes()
         await self._post_community_data(common_constants.METRICS_ROUTE_UPTIME, self.current_config, retry_on_error)
 
+    async def _update_authenticated_bot(self):
+        try:
+            if authentication.Authenticator.instance().is_logged_in():
+                await authentication.Authenticator.instance().update_bot_config_and_stats(
+                    self._get_profitability()
+                )
+        except Exception as err:
+            self.logger.debug(f"Exception when pushing config and stats : {err}")
+
     async def _get_current_community_config(self):
         if not self.bot_id:
             await self._init_bot_id()
@@ -148,6 +162,7 @@ class CommunityManager:
                 community_fields.CommunityFields.EVAL_CONFIG.value: self._get_eval_config(),
                 community_fields.CommunityFields.PAIRS.value: self._get_traded_pairs(),
                 community_fields.CommunityFields.EXCHANGES.value: list(trading_api.get_exchange_names()),
+                community_fields.CommunityFields.EXCHANGE_TYPES.value: self._get_exchange_types(),
                 community_fields.CommunityFields.NOTIFICATIONS.value: self._get_notification_types(),
                 community_fields.CommunityFields.TYPE.value: os_util.get_octobot_type(),
                 community_fields.CommunityFields.PLATFORM.value: os_util.get_current_platform(),
@@ -155,9 +170,22 @@ class CommunityManager:
                 community_fields.CommunityFields.PORTFOLIO_VALUE.value: self._get_real_portfolio_value(),
                 community_fields.CommunityFields.PROFITABILITY.value: self._get_profitability(),
                 community_fields.CommunityFields.TRADED_VOLUMES.value: self._get_traded_volumes(),
-                community_fields.CommunityFields.SUPPORTS.value: self._get_supports()
+                community_fields.CommunityFields.SUPPORTS.value: self._get_supports(),
+                community_fields.CommunityFields.SIGNAL_EMITTER.value:
+                    authentication.Authenticator.instance().get_is_signal_emitter(),
+                community_fields.CommunityFields.SIGNAL_RECEIVER.value:
+                    authentication.Authenticator.instance().get_is_signal_receiver(),
+                community_fields.CommunityFields.PROFILE_NAME.value: self.edited_config.profile.name,
+                community_fields.CommunityFields.PROFILE_ID.value: self.edited_config.profile.profile_id,
+                community_fields.CommunityFields.PROFILE_IMPORTED.value: self.edited_config.profile.imported,
             }
         }
+
+    def _get_exchange_types(self):
+        return [
+            trading_api.get_exchange_type(exchange_manager).value
+            for exchange_manager in self.exchange_managers
+        ]
 
     def _get_profitability(self):
         total_origin_values = 0
@@ -166,7 +194,7 @@ class CommunityManager:
         for exchange_manager in self.exchange_managers:
             profitability, _, _, _, _ = trading_api.get_profitability_stats(exchange_manager)
             total_profitability += float(profitability)
-            total_origin_values += float(trading_api.get_current_portfolio_value(exchange_manager))
+            total_origin_values += float(trading_api.get_origin_portfolio_value(exchange_manager))
 
         return total_profitability * 100 / total_origin_values if total_origin_values > 0 else 0
 
@@ -178,7 +206,7 @@ class CommunityManager:
                 trades += trading_api.get_trade_history(exchange_manager, since=self.octobot_api.get_start_time())
             for trade in trades:
                 # cost is in quote currency for a traded pair
-                currency = symbol_util.split_symbol(trade.symbol)[-1]
+                currency = symbol_util.parse_symbol(trade.symbol).quote
                 if currency in volume_by_currency:
                     volume_by_currency[currency] += float(trade.total_cost)
                 else:
@@ -191,9 +219,9 @@ class CommunityManager:
             exchange_name = trading_api.get_exchange_name(exchange_manager)
             if self.has_real_trader \
                and trading_api.is_sponsoring(exchange_name) \
-               and trading_api.is_valid_account(exchange_manager):
+               and trading_api.is_broker_enabled(exchange_manager):
                 supporting_exchanges.append(exchange_name)
-        supports = self.octobot_api.get_community_auth().supports
+        supports = authentication.Authenticator.instance().user_account.supports
         return {
             community_fields.CommunityFields.EXCHANGES.value: supporting_exchanges,
             community_fields.CommunityFields.ROLES.value: [supports.support_role],

@@ -16,6 +16,20 @@
     "profile": {
       "type": "string"
     },
+    "community": {
+      "type": "object",
+      "properties": {
+        "bot_id": {
+          "type": "string"
+        },
+        "supabase.auth.token": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        }
+      }
+    },
     "backtesting": {
       "type": "object",
       "properties": {
@@ -67,6 +81,9 @@
           "type": "boolean"
         },
         "trades": {
+          "type": "boolean"
+        },
+        "other": {
           "type": "boolean"
         },
         "notification-type": {

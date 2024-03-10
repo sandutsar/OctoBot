@@ -13,7 +13,7 @@ jobs:
     name: ubuntu-latest - Docker - lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Run hadolint
         uses: reviewdog/action-hadolint@v1
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set Environment Variables
         run: |
@@ -36,6 +36,7 @@ jobs:
           echo "VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
           echo "IMAGE=${OWNER}/${IMG}" >> $GITHUB_ENV
           echo "LATEST=latest" >> $GITHUB_ENV
+          echo "STAGING=staging" >> $GITHUB_ENV
           echo "STABLE=stable" >> $GITHUB_ENV
           echo "TEST=test" >> $GITHUB_ENV
           echo "SHA=${GITHUB_SHA}" >> $GITHUB_ENV
@@ -49,7 +50,7 @@ jobs:
         id: wait-for-tentacles
         with:
           token: ${{ secrets.AUTH_TOKEN }}
-          checkName: "ubuntu-latest - Python 3.8 - upload tentacles"
+          checkName: "ubuntu-latestx64 - Python - 3.10 - Upload"
           ref: ${{ github.ref }}
           repo: OctoBot-Tentacles
           timeoutSeconds: 3600
@@ -121,7 +122,7 @@ jobs:
         if: github.event_name != 'push'
         run: |
           echo Start OctoBot docker with branche_name tentacles package
-          docker run -id -e TENTACLES_PACKAGES_SOURCE=dev -e TENTACLES_URL_TAG=${GITHUB_HEAD_REF////_} -e DISABLE_SENTRY=True --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE }}:${{ env.LATEST }}
+          docker run -id -e TENTACLES_REPOSITORY=dev-tentacles -e TENTACLES_URL_TAG=${GITHUB_HEAD_REF////_} -e DISABLE_SENTRY=True --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE }}:${{ env.LATEST }}
           sleep ${{ env.CHECK_TENTACLE_CONTAINER_TIME }}
           if docker logs ${{ env.CONTAINER_NAME }} | grep "octobot_tentacles_manager.api.util.tentacles_management Failed to download file at url :" ; then
               docker rm -f ${{ env.CONTAINER_NAME }}
@@ -146,6 +147,20 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build and push staging
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: docker/build-push-action@master
+        with:
+          context: .
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ env.STAGING }}
+          build-args: |
+            TENTACLES_URL_TAG=${{ env.STABLE }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
       - name: Build and push on tag
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: docker/build-push-action@master
@@ -162,20 +177,27 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Image digest
-        run: echo ${{ steps.docker_build_and_psuh.outputs.digest }}
-
   notify:
-    name: Notify
+    if: ${{ failure() }}
+    needs:
+      - lint
+      - build_test_push
+    uses: Drakkar-Software/.github/.github/workflows/failure_notify_workflow.yml@master
+    secrets:
+      DISCORD_GITHUB_WEBHOOK: ${{ secrets.DISCORD_GITHUB_WEBHOOK }}
+
+
+  notify-dockerhub-update:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    name: Notify dockerhub update
     runs-on: ubuntu-latest
     needs:
       - lint
       - build_test_push
-    if: ${{ failure() }}
 
     steps:
       - name: Notify discord
         uses: sarisia/actions-status-discord@v1
         with:
-          status: Failure
+          description: "@here a new tag has been published on Docker Hub, docker bots can be updated."
           webhook: ${{ secrets.DISCORD_GITHUB_WEBHOOK }}

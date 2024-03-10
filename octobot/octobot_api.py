@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -15,7 +15,8 @@
 #  License along with OctoBot. If not, see <https://www.gnu.org/licenses/>.
 import octobot.constants as constants
 import octobot.commands as commands
-import octobot.community
+import octobot_commons.constants as commons_constants
+import octobot.automation as automation
 
 
 class OctoBotAPI:
@@ -32,26 +33,29 @@ class OctoBotAPI:
     def get_global_config(self) -> dict:
         return self._octobot.config
 
-    def get_startup_config(self) -> object:
-        return self._octobot.get_startup_config(constants.CONFIG_KEY)
+    def get_startup_config(self, dict_only=True):
+        return self._octobot.get_startup_config(constants.CONFIG_KEY, dict_only=dict_only)
 
-    def get_edited_config(self, dict_only=True) -> object:
+    def get_edited_config(self, dict_only=True):
         return self._octobot.get_edited_config(constants.CONFIG_KEY, dict_only=dict_only)
 
-    def get_startup_tentacles_config(self) -> object:
+    def get_startup_tentacles_config(self):
         return self._octobot.get_startup_config(constants.TENTACLES_SETUP_CONFIG_KEY)
 
-    def get_edited_tentacles_config(self) -> object:
+    def get_edited_tentacles_config(self):
         return self._octobot.get_edited_config(constants.TENTACLES_SETUP_CONFIG_KEY)
 
     def set_edited_tentacles_config(self, config):
         self._octobot.set_edited_config(constants.TENTACLES_SETUP_CONFIG_KEY, config)
 
-    def get_trading_mode(self) -> object:
+    def get_trading_mode(self):
         return self._octobot.get_trading_mode()
 
-    def get_tentacles_setup_config(self) -> object:
+    def get_tentacles_setup_config(self):
         return self._octobot.tentacles_setup_config
+
+    def get_startup_messages(self) -> list:
+        return self._octobot.startup_messages
 
     def get_start_time(self) -> float:
         return self._octobot.start_time
@@ -65,11 +69,17 @@ class OctoBotAPI:
     def get_aiohttp_session(self) -> object:
         return self._octobot.get_aiohttp_session()
 
-    def get_community_auth(self) -> octobot.community.CommunityAuthentication:
-        return self._octobot.community_auth
+    def get_automation(self) -> automation.Automation:
+        return self._octobot.automation
 
-    def run_in_main_asyncio_loop(self, coroutine):
-        return self._octobot.run_in_main_asyncio_loop(coroutine)
+    def get_interface(self, interface_class):
+        for interface in self._octobot.interface_producer.interfaces:
+            if isinstance(interface, interface_class):
+                return interface
+
+    def run_in_main_asyncio_loop(self, coroutine, log_exceptions=True,
+                                 timeout=commons_constants.DEFAULT_FUTURE_TIMEOUT):
+        return self._octobot.run_in_main_asyncio_loop(coroutine, log_exceptions=log_exceptions, timeout=timeout)
 
     def run_in_async_executor(self, coroutine):
         return self._octobot.task_manager.run_in_async_executor(coroutine)

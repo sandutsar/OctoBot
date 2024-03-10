@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -159,4 +159,6 @@ class InterfaceProducer(octobot_channels.OctoBotChannelProducer):
                not backtesting_enabled
 
     async def stop(self):
+        self.logger.debug("Stopping ...")
         await service_managers.stop_interfaces(self.interfaces)
+        self.logger.debug("Stopped")

@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -22,7 +22,10 @@ import signal
 import threading
 
 import octobot_commons.configuration as configuration
+import octobot_commons.profiles as profiles
 import octobot_commons.logging as logging
+import octobot_commons.constants as commons_constants
+import octobot_commons.errors as commons_errors
 
 import octobot_tentacles_manager.api as tentacles_manager_api
 import octobot_tentacles_manager.cli as tentacles_manager_cli
@@ -36,15 +39,13 @@ import octobot.configuration_manager as configuration_manager
 COMMANDS_LOGGER_NAME = "Commands"
 IGNORED_COMMAND_WHEN_RESTART = ["-u", "--update"]
 
+GLOBAL_BOT_INSTANCE = None
+
 
 def call_tentacles_manager(command_args):
     octobot_logger.init_logger()
     tentacles_urls = [
         configuration_manager.get_default_tentacles_url(),
-        # tentacles_manager_api.get_compiled_tentacles_url(
-        #     constants.DEFAULT_COMPILED_TENTACLES_URL,
-        #     constants.TENTACLES_REQUIRED_VERSION
-        # )
     ]
     sys.exit(tentacles_manager_cli.handle_tentacles_manager_command(command_args,
                                                                     tentacles_urls=tentacles_urls,
@@ -77,6 +78,7 @@ def start_strategy_optimizer(config, commands):
 
 
 def run_tentacles_install_or_update(config):
+    _check_tentacles_install_exit()
     asyncio.run(install_or_update_tentacles(config))
 
 
@@ -91,16 +93,40 @@ def _check_tentacles_install_exit():
         sys.exit(0)
 
 
-async def update_or_repair_tentacles_if_necessary(tentacles_setup_config, config):
-    if not tentacles_manager_api.are_tentacles_up_to_date(tentacles_setup_config, constants.VERSION):
-        logging.get_logger(COMMANDS_LOGGER_NAME).info("OctoBot tentacles are not up to date. Updating tentacles...")
+def _get_first_non_imported_profile_tentacles_setup_config(config):
+    try:
+        return tentacles_manager_api.get_tentacles_setup_config(
+            config.get_non_imported_profiles()[0].get_tentacles_config_path()
+        )
+    except IndexError:
+        return None
+
+
+async def update_or_repair_tentacles_if_necessary(selected_profile_tentacles_setup_config, config):
+    local_profile_tentacles_setup_config = selected_profile_tentacles_setup_config
+    logger = logging.get_logger(COMMANDS_LOGGER_NAME)
+    if config.profile.imported:
+        if not tentacles_manager_api.are_tentacles_up_to_date(selected_profile_tentacles_setup_config,
+                                                              constants.VERSION):
+            selected_profile_tentacles_version = tentacles_manager_api.get_tentacles_installation_version(
+                selected_profile_tentacles_setup_config
+            )
+            logger.info(f"Current imported profile \"{config.profile.name}\" references tentacles in a different "
+                        f"version from the current OctoBot. Referenced version: "
+                        f"{selected_profile_tentacles_version}, current OctoBot version: {constants.VERSION}. "
+                        f"Please make sure that this profile works on your OctoBot.")
+            # only update tentacles based on local (non imported) profiles tentacles installation version
+            local_profile_tentacles_setup_config = _get_first_non_imported_profile_tentacles_setup_config(config)
+    if local_profile_tentacles_setup_config is None or \
+            not tentacles_manager_api.are_tentacles_up_to_date(local_profile_tentacles_setup_config, constants.VERSION):
+        logger.info("OctoBot tentacles are not up to date. Updating tentacles...")
         _check_tentacles_install_exit()
         if await install_or_update_tentacles(config):
-            logging.get_logger(COMMANDS_LOGGER_NAME).info("OctoBot tentacles are now up to date.")
+            logger.info("OctoBot tentacles are now up to date.")
     elif tentacles_manager_api.load_tentacles(verbose=True):
-        logging.get_logger(COMMANDS_LOGGER_NAME).debug("OctoBot tentacles are up to date.")
+        logger.debug("OctoBot tentacles are up to date.")
     else:
-        logging.get_logger(COMMANDS_LOGGER_NAME).info("OctoBot tentacles are damaged. Installing default tentacles ...")
+        logger.info("OctoBot tentacles are damaged. Installing default tentacles ...")
         _check_tentacles_install_exit()
         await install_or_update_tentacles(config)
 
@@ -117,21 +143,80 @@ async def install_all_tentacles(tentacles_url=None):
     if tentacles_url is None:
         tentacles_url = configuration_manager.get_default_tentacles_url()
     async with aiohttp.ClientSession() as aiohttp_session:
-        await tentacles_manager_api.install_all_tentacles(tentacles_url,
-                                                          aiohttp_session=aiohttp_session,
-                                                          bot_install_dir=os.getcwd())
-        # compiled_tentacles_url = tentacles_manager_api.get_compiled_tentacles_url(
-        #     constants.DEFAULT_COMPILED_TENTACLES_URL,
-        #     constants.TENTACLES_REQUIRED_VERSION
-        # )
-        # await tentacles_manager_api.install_all_tentacles(compiled_tentacles_url,
-        #                                                   aiohttp_session=aiohttp_session,
-        #                                                   bot_install_dir=constants.OCTOBOT_FOLDER)
+        for url in [tentacles_url] + (
+                constants.ADDITIONAL_TENTACLES_PACKAGE_URL.split(constants.URL_SEPARATOR)
+                if constants.ADDITIONAL_TENTACLES_PACKAGE_URL else []
+        ):
+            if url is None:
+                continue
+            if constants.VERSION_PLACEHOLDER in url:
+                url = url.replace(constants.VERSION_PLACEHOLDER, constants.LONG_VERSION)
+            await tentacles_manager_api.install_all_tentacles(url,
+                                                              aiohttp_session=aiohttp_session,
+                                                              bot_install_dir=os.getcwd())
+
+
+def ensure_profile(config):
+    if config.profile is None:
+        # no selected profile or profile not found
+        try:
+            config.select_profile(commons_constants.DEFAULT_PROFILE)
+        except KeyError:
+            raise commons_errors.NoProfileError
+
+
+def download_and_select_profile(logger, config, to_download_profile_urls, to_select_profile):
+    if to_download_profile_urls:
+        download_missing_profiles(
+            config,
+            to_download_profile_urls
+        )
+    if select_forced_profile_if_any(config, to_select_profile, logger):
+        ensure_profile(config)
+
+
+def download_missing_profiles(config, profile_urls):
+    downloaded_profiles = []
+    # dl profiles from env
+    if profile_urls:
+        installed_profiles_urls = set(
+            profile.origin_url
+            for profile in config.profile_by_id.values()
+        )
+        for download_url in set(profile_urls):
+            if download_url not in installed_profiles_urls:
+                installed_profile = profiles.download_and_install_profile(download_url, constants.PROFILE_FILE_SCHEMA)
+                if installed_profile is not None:
+                    downloaded_profiles.append(
+                        installed_profile
+                    )
+    if downloaded_profiles:
+        # reload profiles to load downloaded ones
+        config.load_profiles()
+    return downloaded_profiles
+
+
+def select_forced_profile_if_any(config, forced_profile, logger) -> bool:
+    if forced_profile:
+        for profile in config.profile_by_id.values():
+            if profile.profile_id == forced_profile \
+               or profile.origin_url == forced_profile \
+               or profile.name == forced_profile:
+                logger.info(f"Selecting forced profile {profile.name} (from identified by{forced_profile})")
+                config.select_profile(profile.profile_id)
+                return True
+        logger.warning(f"Forced profile not found in available profiles ({forced_profile})")
+    return False
+
+
+def set_global_bot_instance(bot_instance):
+    global GLOBAL_BOT_INSTANCE
+    GLOBAL_BOT_INSTANCE = bot_instance
 
 
 def _signal_handler(_, __):
     # run Commands.BOT.stop_threads in thread because can't use the current asyncio loop
-    stopping_thread = threading.Thread(target=octobot.get_bot().task_manager.stop_tasks(),
+    stopping_thread = threading.Thread(target=GLOBAL_BOT_INSTANCE.task_manager.stop_tasks(),
                                        name="Commands signal_handler stop_tasks")
     stopping_thread.start()
     stopping_thread.join()

@@ -1,5 +1,5 @@
 #  This file is part of OctoBot (https://github.com/Drakkar-Software/OctoBot)
-#  Copyright (c) 2021 Drakkar-Software, All rights reserved.
+#  Copyright (c) 2023 Drakkar-Software, All rights reserved.
 #
 #  OctoBot is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -17,9 +17,11 @@ import asyncio
 import threading
 import concurrent.futures as thread
 import traceback
+import sys
 
 import octobot_commons.asyncio_tools as asyncio_tools
 import octobot_commons.logging as logging
+import octobot_commons.constants as commons_constants
 
 import octobot.constants as constants
 
@@ -66,13 +68,28 @@ class TaskManager:
         self.logger.debug("Stopped OctoBot main loop")
 
     def run_forever(self, coroutine):
-        self.loop_forever_thread = threading.Thread(target=self.run_bot_in_thread, args=(coroutine,),
-                                                    name=f"OctoBot Main Thread")
-        self.loop_forever_thread.start()
+        if constants.RUN_IN_MAIN_THREAD:
+            self.run_bot_in_thread(coroutine)
+        else:
+            self.loop_forever_thread = threading.Thread(
+                target=self.run_bot_in_thread, args=(coroutine,),
+                name="OctoBot Main Thread")
+            self.loop_forever_thread.start()
+            if sys.version_info.minor >= 9:
+                # only required for python 3.9 +
+                self.loop_forever_thread.join()
 
-    def stop_tasks(self):
+    def stop_tasks(self, stop_octobot=True):
         self.logger.info("Stopping tasks...")
-        stop_coroutines = [self.octobot.stop()]
+
+        async def stop_timeout(timeout):
+            await asyncio.wait_for(self.octobot.stopped.wait(), timeout)
+
+        stop_coroutines = []
+        if stop_octobot:
+            allowed_seconds_to_stop = 10
+            stop_coroutines.append(self.octobot.stop())
+            stop_coroutines.append(stop_timeout(allowed_seconds_to_stop))
 
         if self.tools_task_group:
             self.tools_task_group.cancel()
@@ -81,17 +98,33 @@ class TaskManager:
         if self.octobot.community_handler:
             stop_coroutines.append(self.octobot.community_handler.stop_task())
 
-        async def _await_gather(tasks):
-            # await this gather to be sure to complete the each stop call
-            await asyncio.gather(*tasks)
+        async def _await_timeouted_gather(tasks):
+            # await this gather to be sure to complete each stop call or timeout
+            try:
+                await asyncio.gather(*tasks)
+            except asyncio.exceptions.TimeoutError:
+                self.logger.warning(f"Timeout while stopping tasks, forcing stop.")
+                raise
 
-        asyncio_tools.run_coroutine_in_asyncio_loop(_await_gather(stop_coroutines), self.async_loop)
+        if stop_coroutines:
+            try:
+                asyncio_tools.run_coroutine_in_asyncio_loop(_await_timeouted_gather(stop_coroutines), self.async_loop)
+            except asyncio.exceptions.TimeoutError:
+                self.logger.info(f"Remaining threads: {self._get_remaining_threads()}")
+                sys.exit(-1)
         self.async_loop.stop()
         # ensure there is at least one element in the event loop tasks
         # not to block on base_event.py#self._selector.select(timeout) which prevents run_forever() from completing
         asyncio.run_coroutine_threadsafe(asyncio_tools.wait_asyncio_next_cycle(), self.async_loop)
 
+        self.logger.debug(f"Remaining threads: {self._get_remaining_threads()}")
         self.logger.info("Tasks stopped.")
+
+    def _get_remaining_threads(self):
+        return [
+            f"{alive_thread.name}{'[daemon]' if alive_thread.daemon else ''}"
+            for alive_thread in threading.enumerate()
+        ]
 
     @classmethod
     def get_name(cls):
@@ -118,8 +151,10 @@ class TaskManager:
                                                     name=f"{self.get_name()} new asyncio main loop")
         self.current_loop_thread.start()
 
-    def run_in_main_asyncio_loop(self, coroutine):
-        return asyncio_tools.run_coroutine_in_asyncio_loop(coroutine, self.async_loop)
+    def run_in_main_asyncio_loop(self, coroutine, log_exceptions=True,
+                                 timeout=commons_constants.DEFAULT_FUTURE_TIMEOUT):
+        return asyncio_tools.run_coroutine_in_asyncio_loop(coroutine, self.async_loop,
+                                                           log_exceptions=log_exceptions, timeout=timeout)
 
     def run_in_async_executor(self, coroutine):
         if self.executors is not None:
